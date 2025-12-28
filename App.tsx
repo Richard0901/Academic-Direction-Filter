@@ -15,6 +15,9 @@ function App() {
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [settings, setSettings] = useState<AISettings>(DEFAULT_SETTINGS);
 
+  // UI State
+  const [copyStatus, setCopyStatus] = useState<'idle' | 'copied'>('idle');
+
   // Load settings from localStorage on mount
   useEffect(() => {
     const savedSettings = localStorage.getItem('academicPivotSettings');
@@ -65,6 +68,61 @@ function App() {
 2. 肿瘤微环境重塑（TME Remodeling）：单纯杀伤肿瘤细胞效果有限，现在的趋势是激活免疫系统。缺氧环境的改善是关键。
 3. 可穿戴生物传感器：实时监测汗液或皮下组织液的生物标志物。
 4. 植物光合作用增强：农业领域的合成生物学方向，利用纳米材料提高作物光能利用率。`);
+  };
+
+  const formatAsMarkdown = (data: AnalysisResponse) => {
+    const date = new Date().toISOString().split('T')[0];
+    let md = `# 学术方向筛选器分析报告\n生成日期: ${date}\n\n`;
+    
+    data.directions.forEach((d, i) => {
+      md += `## 方向 ${i + 1}: ${d.title}\n\n`;
+      md += `**迁移逻辑**: ${d.logicType}\n\n`;
+      
+      md += `### 组合公式\n\`${d.combinationFormula}\`\n\n`;
+      
+      md += `### 迁移逻辑详解\n${d.migrationLogicDescription}\n\n`;
+      
+      md += `### 资源匹配度\n${d.resourceMatch}\n\n`;
+      
+      md += `### 基金申报话术\n> ${d.grantPitch}\n\n`;
+      
+      md += `### 四维平衡评价\n`;
+      md += `- **创新性**: ${d.evaluation.innovationScore}/10\n`;
+      md += `- **可行性**: ${d.evaluation.feasibilityScore}/10\n`;
+      md += `- **延续性**: ${d.evaluation.continuityScore}/10\n`;
+      md += `- **逻辑性**: ${d.evaluation.logicalityScore}/10\n`;
+      md += `- **简评**: ${d.evaluation.analysis}\n\n`;
+      
+      md += `---\n\n`;
+    });
+    
+    return md;
+  };
+
+  const handleCopy = async () => {
+    if (!result) return;
+    const text = formatAsMarkdown(result);
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopyStatus('copied');
+      setTimeout(() => setCopyStatus('idle'), 2000);
+    } catch (err) {
+      console.error('Failed to copy', err);
+    }
+  };
+
+  const handleDownload = () => {
+    if (!result) return;
+    const text = formatAsMarkdown(result);
+    const blob = new Blob([text], { type: 'text/markdown' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `academic-pivot-${new Date().toISOString().slice(0,10)}.md`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
   };
 
   return (
@@ -227,11 +285,48 @@ function App() {
 
             {result && (
               <div className="space-y-6 animate-fade-in">
-                <div className="flex items-center justify-between mb-2">
-                  <h2 className="text-xl font-bold text-slate-800">推荐申请方向</h2>
-                  <span className="text-sm text-slate-500 bg-slate-100 px-3 py-1 rounded-full">
-                    基于 6维学术迁移逻辑
-                  </span>
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-2">
+                  <div className="flex items-center gap-3">
+                    <h2 className="text-xl font-bold text-slate-800">推荐申请方向</h2>
+                    <span className="text-xs text-slate-500 bg-slate-100 px-2 py-1 rounded-full hidden sm:inline-block">
+                      基于 6维学术迁移逻辑
+                    </span>
+                  </div>
+                  
+                  <div className="flex items-center gap-2 self-end sm:self-auto">
+                    <button 
+                      onClick={handleCopy}
+                      className="inline-flex items-center px-3 py-1.5 border border-slate-300 shadow-sm text-sm font-medium rounded-md text-slate-700 bg-white hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-all"
+                      title="复制 Markdown"
+                    >
+                      {copyStatus === 'copied' ? (
+                        <>
+                          <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1.5 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                          </svg>
+                          <span className="text-green-600">已复制</span>
+                        </>
+                      ) : (
+                        <>
+                          <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1.5 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" />
+                          </svg>
+                          复制结果
+                        </>
+                      )}
+                    </button>
+                    
+                    <button 
+                      onClick={handleDownload}
+                      className="inline-flex items-center px-3 py-1.5 border border-slate-300 shadow-sm text-sm font-medium rounded-md text-slate-700 bg-white hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-all"
+                      title="下载 Markdown 文件"
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1.5 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                      </svg>
+                      下载
+                    </button>
+                  </div>
                 </div>
                 
                 <div className="grid gap-6">
