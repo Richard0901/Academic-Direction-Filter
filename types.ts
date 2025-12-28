@@ -33,3 +33,19 @@ export interface UserInput {
   academicAssets: string;
   marketAnalysis: string;
 }
+
+export type APIMode = 'gemini' | 'custom';
+
+export interface AISettings {
+  mode: APIMode;
+  customBaseUrl: string;
+  customApiKey: string;
+  customModelName: string;
+}
+
+export const DEFAULT_SETTINGS: AISettings = {
+  mode: 'gemini',
+  customBaseUrl: 'https://api.siliconflow.cn/v1',
+  customApiKey: '',
+  customModelName: 'deepseek-ai/DeepSeek-V3',
+};

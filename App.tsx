@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { generateDirections } from './services/gemini';
 import { DirectionCard } from './components/DirectionCard';
-import { AnalysisResponse } from './types';
+import { SettingsModal } from './components/SettingsModal';
+import { AnalysisResponse, AISettings, DEFAULT_SETTINGS } from './types';
 
 function App() {
   const [academicAssets, setAcademicAssets] = useState('');
@@ -9,6 +10,27 @@ function App() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<AnalysisResponse | null>(null);
+  
+  // Settings State
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [settings, setSettings] = useState<AISettings>(DEFAULT_SETTINGS);
+
+  // Load settings from localStorage on mount
+  useEffect(() => {
+    const savedSettings = localStorage.getItem('academicPivotSettings');
+    if (savedSettings) {
+      try {
+        setSettings(JSON.parse(savedSettings));
+      } catch (e) {
+        console.error("Failed to parse settings", e);
+      }
+    }
+  }, []);
+
+  const handleSaveSettings = (newSettings: AISettings) => {
+    setSettings(newSettings);
+    localStorage.setItem('academicPivotSettings', JSON.stringify(newSettings));
+  };
 
   const handleSubmit = async () => {
     if (!academicAssets.trim() || !marketAnalysis.trim()) {
@@ -21,10 +43,10 @@ function App() {
     setResult(null);
 
     try {
-      const data = await generateDirections(academicAssets, marketAnalysis);
+      const data = await generateDirections(academicAssets, marketAnalysis, settings);
       setResult(data);
     } catch (err: any) {
-      setError(err.message || "生成失败，请稍后重试。");
+      setError(err.message || "生成失败，请检查设置或稍后重试。");
     } finally {
       setIsLoading(false);
     }
@@ -47,6 +69,14 @@ function App() {
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900 pb-20">
+      {/* Settings Modal */}
+      <SettingsModal 
+        isOpen={isSettingsOpen} 
+        onClose={() => setIsSettingsOpen(false)}
+        settings={settings}
+        onSave={handleSaveSettings}
+      />
+
       {/* Header */}
       <header className="bg-white border-b border-slate-200 sticky top-0 z-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
@@ -58,12 +88,25 @@ function App() {
             </div>
             <h1 className="text-xl font-bold text-slate-800 tracking-tight">学术方向筛选器 <span className="text-slate-400 font-normal text-sm ml-1">Academic Pivot</span></h1>
           </div>
-          <button 
-            onClick={handleFillDemo}
-            className="text-sm text-slate-500 hover:text-blue-600 transition-colors hidden sm:block"
-          >
-            加载示例数据
-          </button>
+          
+          <div className="flex items-center gap-3">
+            <button 
+              onClick={handleFillDemo}
+              className="text-sm text-slate-500 hover:text-blue-600 transition-colors hidden sm:block"
+            >
+              加载示例数据
+            </button>
+            <button
+              onClick={() => setIsSettingsOpen(true)}
+              className="p-2 text-slate-500 hover:text-blue-600 hover:bg-blue-50 rounded-full transition-all"
+              title="设置 / Settings"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+              </svg>
+            </button>
+          </div>
         </div>
       </header>
 
@@ -134,6 +177,11 @@ function App() {
                     '生成申请方向'
                   )}
                 </button>
+                {settings.mode === 'custom' && (
+                  <p className="text-xs text-center text-slate-400 mt-2">
+                    正在使用自定义 API: {settings.customModelName}
+                  </p>
+                )}
               </div>
 
               {error && (
